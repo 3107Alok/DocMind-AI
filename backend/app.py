@@ -79,15 +79,33 @@ from firebase_admin import credentials, firestore, auth
 from google.cloud.firestore import FieldFilter
 
 try:
+    cred = None
     cred_file = BASE_DIR / "firebase_service_account.json"
-    if not cred_file.exists():
-        raise FileNotFoundError(
-            f"Startup Error: Firebase Service Account JSON file is missing at {cred_file}"
-        )
+    
+    # 1. Try loading from local file
+    if cred_file.exists():
+        cred = credentials.Certificate(str(cred_file))
+    else:
+        # 2. Fallback: Load from environment variable (ideal for Render/deployments)
+        service_account_env = os.getenv("FIREBASE_SERVICE_ACCOUNT")
+        if service_account_env:
+            import json
+            try:
+                cred_data = json.loads(service_account_env)
+                cred = credentials.Certificate(cred_data)
+            except Exception as json_err:
+                if Path(service_account_env).exists():
+                    cred = credentials.Certificate(service_account_env)
+                else:
+                    raise ValueError(f"FIREBASE_SERVICE_ACCOUNT environment variable is not a valid JSON string or file path: {json_err}")
+        else:
+            raise FileNotFoundError(
+                f"Startup Error: Firebase Service Account credentials missing. "
+                f"Add {cred_file} or set FIREBASE_SERVICE_ACCOUNT env var."
+            )
 
     # Initialize app if not already initialized
     if not firebase_admin._apps:
-        cred = credentials.Certificate(str(cred_file))
         firebase_admin.initialize_app(cred)
 
     # Verify firestore client can be initialized
