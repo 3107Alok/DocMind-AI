@@ -9,7 +9,7 @@ DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Au
 *   **Secure Authentication**: Integrated Firebase Authentication to protect user sessions.
 *   **GridFS Storage**: Complete removal of Firebase Storage in favor of local MongoDB GridFS storage using chunked binary uploads.
 *   **Semantic Chunking Pipeline**: Monotonic sliding index chunking (500–700 words, 100-word overlap) with overlap guards.
-*   **Local Vector Database**: Semantic similarity index searches using **ChromaDB** with sentence embeddings generated locally via `all-MiniLM-L6-v2`.
+*   **Local Vector Database**: Semantic similarity index searches using **ChromaDB** with embeddings generated via the Gemini `models/gemini-embedding-2` API.
 *   **Multi-Model Resiliency**: Cascade fallback chain (`gemini-2.5-flash` ➔ `gemini-2.0-flash`) combined with exponential retries (`2s`, `4s`, `8s`) for rate limits (`429`) and serverbusy errors (`503`).
 *   **Memory-Preserving Conversations**: Conversation history tracking via Firestore with pagination-aware smooth scroll layouts.
 
@@ -23,8 +23,8 @@ graph TD
     API -->|2. Store Binary| MongoDB[(MongoDB GridFS)]
     API -->|3. Extract Text| PyMuPDF[PyMuPDF parser]
     PyMuPDF -->|4. Chunking| ChunkService[Semantic Chunking]
-    ChunkService -->|5. Vectorize| SentenceTransformer[SentenceTransformer]
-    SentenceTransformer -->|6. Index Vectors| ChromaDB[(ChromaDB Vector Store)]
+    ChunkService -->|5. Vectorize| GeminiEmbeddings[Gemini Embeddings API]
+    GeminiEmbeddings -->|6. Index Vectors| ChromaDB[(ChromaDB Vector Store)]
     API -->|7. Save Metadata| Firestore[(Firestore DB)]
     
     User -->|8. Chat Request| API
@@ -41,7 +41,7 @@ graph TD
 *   **Frontend**: React, Next.js (App Router, Tailwind CSS), Axios.
 *   **Backend**: Python, FastAPI, Uvicorn.
 *   **Database / Storage**: MongoDB Atlas (GridFS), Google Cloud Firestore.
-*   **Vector Search**: ChromaDB, Sentence-Transformers (`all-MiniLM-L6-v2`).
+*   **Vector Search**: ChromaDB, Gemini Embeddings API (`models/gemini-embedding-2`).
 *   **AI Services**: Google Gemini (via `google-genai` SDK).
 *   **Security**: Firebase Auth JWT verification middleware.
 
@@ -88,8 +88,15 @@ DocMind AI/
 | `MONGO_DB_NAME` | MongoDB database name | `docmind_ai` |
 | `GEMINI_API_KEY` | Google AI Studio API Key | `AIzaSy...` |
 | `GEMINI_MODELS` | Fallback models list (comma-separated) | `gemini-2.5-flash,gemini-2.0-flash` |
-| `EMBEDDING_MODEL_NAME` | Embedding model identifier | `all-MiniLM-L6-v2` |
-| `BACKEND_URL` | Server backend deployment hostname | `http://localhost:8000` |
+| `BACKEND_URL` | Server backend deployment hostname (Render URL) | `https://docmind-ai-backend-vcvi.onrender.com` |
+| `FIREBASE_SERVICE_ACCOUNT` | Fallback Firebase service key credentials JSON string | `{"type": "service_account", ...}` |
+
+### Frontend Configuration (`.env.local`)
+
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `NEXT_PUBLIC_API_URL` | Production FastAPI server host URL | `https://docmind-ai-backend-vcvi.onrender.com` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Client SDK API Key | `AIzaSy...` |
 
 ---
 
