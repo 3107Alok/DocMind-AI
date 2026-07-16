@@ -40,6 +40,23 @@ export const PDFViewer: React.FC = () => {
     if (pdfPage > 1) setPdfPage(pdfPage - 1);
   };
 
+  const getCleanFileUrl = () => {
+    if (!currentDoc || !currentDoc.fileUrl) return "";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://docmind-ai-backend-vcvi.onrender.com";
+    if (currentDoc.fileUrl.includes("localhost:") || currentDoc.fileUrl.includes("127.0.0.1:")) {
+      try {
+        const urlObj = new URL(currentDoc.fileUrl);
+        return `${apiUrl}${urlObj.pathname}`;
+      } catch (e) {
+        return currentDoc.fileUrl.replace(/http:\/\/localhost:8000|http:\/\/127.0.0.1:8000/g, apiUrl);
+      }
+    }
+    if (currentDoc.fileUrl.startsWith("/")) {
+      return `${apiUrl}${currentDoc.fileUrl}`;
+    }
+    return currentDoc.fileUrl;
+  };
+
   return (
     <div className="flex-1 bg-slate-50 flex flex-col h-full border-r border-slate-100 overflow-hidden">
       {/* Viewer toolbar */}
@@ -91,7 +108,7 @@ export const PDFViewer: React.FC = () => {
             className="w-full max-w-2xl bg-white border border-slate-200 shadow-md rounded-2xl overflow-hidden aspect-[1/1.41] flex flex-col justify-between transition-transform duration-150 h-[800px]"
           >
             <iframe
-              src={`${currentDoc.fileUrl}#page=${pdfPage}`}
+              src={`${getCleanFileUrl()}#page=${pdfPage}`}
               className="w-full h-full border-none"
               title={currentDoc.name}
             />
