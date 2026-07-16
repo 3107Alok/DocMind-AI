@@ -36,7 +36,7 @@ class RetrieverService:
         
         # Generate query embedding vector using Gemini
         response = client.models.embed_content(
-            model="text-embedding-004",
+            model="models/gemini-embedding-2",
             contents=user_question
         )
         query_vector = response.embeddings[0].values

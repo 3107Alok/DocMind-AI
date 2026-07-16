@@ -524,7 +524,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://docmind-ai-backend-vcvi.onrender.com";
 
       const formData = new FormData();
       formData.append("file", file);
@@ -586,7 +586,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!auth.currentUser) return;
     try {
       const idToken = await auth.currentUser.getIdToken();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://docmind-ai-backend-vcvi.onrender.com";
 
       const response = await fetch(`${apiUrl}/documents/${id}`, {
         method: "DELETE",
@@ -666,7 +666,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       // 2. Call backend /chat API
       const idToken = await auth.currentUser.getIdToken();
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://docmind-ai-backend-vcvi.onrender.com";
       
       const response = await fetch(`${apiUrl}/chat`, {
         method: "POST",

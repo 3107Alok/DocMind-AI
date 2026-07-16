@@ -39,7 +39,7 @@ class EmbeddingService:
         
         # Call Gemini Embeddings API in a single batch request
         response = client.models.embed_content(
-            model="text-embedding-004",
+            model="models/gemini-embedding-2",
             contents=texts
         )
         
