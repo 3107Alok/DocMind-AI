@@ -1,36 +1,175 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DocMind AI 🧠📄
 
-## Getting Started
+DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Augmented Generation) web application that enables users to upload PDF documents, parse and index them locally, and engage in context-aware conversations. Built with a robust modern stack combining **Next.js (App Router)**, **FastAPI**, **MongoDB GridFS**, **ChromaDB**, **Firestore**, and the new official **Google GenAI SDK**.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🚀 Key Features
+
+*   **Secure Authentication**: Integrated Firebase Authentication to protect user sessions.
+*   **GridFS Storage**: Complete removal of Firebase Storage in favor of local MongoDB GridFS storage using chunked binary uploads.
+*   **Semantic Chunking Pipeline**: Monotonic sliding index chunking (500–700 words, 100-word overlap) with overlap guards.
+*   **Local Vector Database**: Semantic similarity index searches using **ChromaDB** with sentence embeddings generated locally via `all-MiniLM-L6-v2`.
+*   **Multi-Model Resiliency**: Cascade fallback chain (`gemini-2.5-flash` ➔ `gemini-2.0-flash`) combined with exponential retries (`2s`, `4s`, `8s`) for rate limits (`429`) and serverbusy errors (`503`).
+*   **Memory-Preserving Conversations**: Conversation history tracking via Firestore with pagination-aware smooth scroll layouts.
+
+---
+
+## 🏗️ Architecture & Data Flow
+
+```mermaid
+graph TD
+    User([User Client]) -->|1. Upload PDF| API[FastAPI Backend]
+    API -->|2. Store Binary| MongoDB[(MongoDB GridFS)]
+    API -->|3. Extract Text| PyMuPDF[PyMuPDF parser]
+    PyMuPDF -->|4. Chunking| ChunkService[Semantic Chunking]
+    ChunkService -->|5. Vectorize| SentenceTransformer[SentenceTransformer]
+    SentenceTransformer -->|6. Index Vectors| ChromaDB[(ChromaDB Vector Store)]
+    API -->|7. Save Metadata| Firestore[(Firestore DB)]
+    
+    User -->|8. Chat Request| API
+    API -->|9. Get Thread History| Firestore
+    API -->|10. Query Similarity| ChromaDB
+    API -->|11. Compile Context| PromptBuilder[Prompt Builder]
+    PromptBuilder -->|12. Generate| Gemini[Gemini API]
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠️ Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+*   **Frontend**: React, Next.js (App Router, Tailwind CSS), Axios.
+*   **Backend**: Python, FastAPI, Uvicorn.
+*   **Database / Storage**: MongoDB Atlas (GridFS), Google Cloud Firestore.
+*   **Vector Search**: ChromaDB, Sentence-Transformers (`all-MiniLM-L6-v2`).
+*   **AI Services**: Google Gemini (via `google-genai` SDK).
+*   **Security**: Firebase Auth JWT verification middleware.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📂 Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+DocMind AI/
+├── backend/
+│   ├── chroma_db/               # Local vector storage
+│   ├── models/                  # Pydantic validation schemas
+│   ├── routes/                  # API endpoints
+│   ├── services/                # Business logic services
+│   │   ├── chunk_service.py     # semantic overlap chunker
+│   │   ├── embedding_service.py # local vector generator
+│   │   ├── gemini_service.py    # fallback LLM service
+│   │   ├── pdf_service.py       # text extractor
+│   │   ├── retriever_service.py # similarity searcher
+│   │   └── vector_db_service.py # vector controller
+│   ├── uploads/                 # Local processing cache (ignored)
+│   ├── .env                     # Local credentials (ignored)
+│   ├── app.py                   # Server startup, audit, & main routes
+│   └── requirements.txt         # PyPI package dependencies
+├── src/
+│   ├── app/                     # Next.js page views
+│   ├── components/              # React UI layout elements
+│   ├── context/                 # Context and API hooks
+│   ├── lib/                     # Client libraries (Firebase, Axios)
+│   └── services/                # Axios wrappers
+├── .gitignore                   # Safe deployment ignores
+└── README.md                    # Project documentation
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## ⚙️ Environment Variables
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Backend Configuration (`backend/.env`)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Variable | Description | Default / Example |
+| :--- | :--- | :--- |
+| `MONGO_URI` | MongoDB Atlas cluster connection string | `mongodb+srv://...` |
+| `MONGO_DB_NAME` | MongoDB database name | `docmind_ai` |
+| `GEMINI_API_KEY` | Google AI Studio API Key | `AIzaSy...` |
+| `GEMINI_MODELS` | Fallback models list (comma-separated) | `gemini-2.5-flash,gemini-2.0-flash` |
+| `EMBEDDING_MODEL_NAME` | Embedding model identifier | `all-MiniLM-L6-v2` |
+| `BACKEND_URL` | Server backend deployment hostname | `http://localhost:8000` |
+
+---
+
+## 🔧 Installation & Setup
+
+### 1. Prerequisites
+*   Node.js v18+ & npm
+*   Python 3.10+
+*   MongoDB Cluster & Firebase Web App setup
+
+### 2. Backend Installation
+Navigate to `/backend`, set up virtual environment and install packages:
+```bash
+cd backend
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Place your Firebase Admin SDK service account key json in `/backend/firebase_service_account.json` (do not commit this file).
+
+Configure your `/backend/.env` file.
+
+### 3. Frontend Installation
+Navigate to the root folder and install packages:
+```bash
+npm install
+```
+
+Configure your `.env.local` containing your Firebase web configuration credentials:
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+```
+
+---
+
+## 🏃 Running the Application
+
+### Start the Backend Server (FastAPI)
+```bash
+cd backend
+.\venv\Scripts\activate
+python -m uvicorn app:app --reload
+```
+
+### Start the Frontend Server (Next.js)
+```bash
+npm run dev
+```
+
+---
+
+## 📡 API Overview
+
+| Method | Endpoint | Auth | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/health` | No | Health check validating MongoDB, Firestore, ChromaDB, and Gemini connection statuses. |
+| `POST` | `/upload` | Yes | Upload PDF files using multipart/form-data directly to MongoDB GridFS. |
+| `GET` | `/documents` | Yes | List all uploaded document metadata for the logged-in user. |
+| `POST` | `/chat` | Yes | Conversational generation utilizing vector searches and history memory. |
+| `DELETE`| `/documents/{id}` | Yes | Complete document deletion (GridFS binary, Chroma vectors, chat thread history, and local JSONs). |
+
+---
+
+## 🔒 Security Policy
+*   **Secrets Shield**: Strict validation of environment variables. No keys or connection credentials are saved or printed to stdout.
+*   **Path Traversal Prevention**: Document IDs and uploads are sanitized to block path-manipulation attacks.
+*   **CORS Rules**: Origins are locked down in production configurations.
+*   **File Constraints**: Upload size validation restricts payloads above 20MB.
+
+---
+
+## 💡 Troubleshooting
+*   **MongoDB Authentication Error**: Verify user credentials and whitelist access IPs inside MongoDB Atlas.
+*   **Firebase Admin Error**: Verify `firebase_service_account.json` credentials format matches the download key schema exactly.
+*   **Uvicorn Unicode Crash**: Server encoding is reconfigured dynamically to prevent CP1252 errors on Windows shells.
+
+---
+
+## 📄 License
+This project is licensed under the MIT License.
