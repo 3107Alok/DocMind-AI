@@ -236,6 +236,7 @@ from services.vector_db_service import VectorDBService
 from services.retriever_service import RetrieverService
 from services.prompt_builder import PromptBuilder
 from services.gemini_service import GeminiService
+from services.llm_router import LLMRouter
 
 class RetrievalRequest(BaseModel):
     documentId: str
@@ -797,16 +798,16 @@ async def chat_with_document(
         # 4. Build prompt
         prompt = PromptBuilder.build_prompt(request.question, chunks, history_str)
 
-        # 5. Call Gemini
-        logger.info("Gemini request started")
-        gemini_result = GeminiService.generate_response(prompt)
+        # 5. Call LLM Router
+        logger.info("LLM request started")
+        llm_result = LLMRouter.generate_response(prompt)
         
         answer = "Unable to generate response. Please try again."
-        if gemini_result.get("success"):
-            logger.info("Gemini response received")
-            answer = gemini_result.get("answer", "")
+        if llm_result.get("success"):
+            logger.info("LLM response received")
+            answer = llm_result.get("answer", "")
         else:
-            answer = f"Error generating response: {gemini_result.get('message')}"
+            answer = f"Error generating response: {llm_result.get('message')}"
 
         # 6. Extract source pages
         source_pages = list(set([c.get("pageStart") for c in chunks if c.get("pageStart") is not None]))
@@ -827,7 +828,7 @@ async def chat_with_document(
         
         db.collection("chats").document(ai_msg_id).set(ai_msg_data)
 
-        if gemini_result.get("success"):
+        if llm_result.get("success"):
             logger.info("Chat completed")
 
         return {
@@ -890,13 +891,20 @@ async def get_document_file(document_id: str):
 
 @app.get("/health")
 async def health_check():
+    groq_api_key = os.getenv("GROQ_API_KEY")
+    groq_ready = True if groq_api_key else False
+    
+    # We can check if any core dependency failed
+    all_healthy = mongo_connected and firestore_ready and chromadb_ready and embedding_loaded and gemini_ready and groq_ready
+    
     return {
-        "status": "healthy",
+        "status": "healthy" if all_healthy else "degraded",
         "services": {
             "database": mongo_connected,
             "firestore": firestore_ready,
             "chromadb": chromadb_ready,
             "embedding": embedding_loaded,
-            "gemini": gemini_ready
+            "gemini": "Connected" if gemini_ready else "Failed",
+            "groq": "Connected" if groq_ready else "Failed"
         }
     }

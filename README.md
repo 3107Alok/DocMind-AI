@@ -10,7 +10,7 @@ DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Au
 *   **GridFS Storage**: Complete removal of Firebase Storage in favor of local MongoDB GridFS storage using chunked binary uploads.
 *   **Semantic Chunking Pipeline**: Monotonic sliding index chunking (500–700 words, 100-word overlap) with overlap guards.
 *   **Local Vector Database**: Semantic similarity index searches using **ChromaDB** with embeddings generated via the Gemini `models/gemini-embedding-2` API.
-*   **Multi-Model Resiliency**: Cascade fallback chain (`gemini-2.5-flash` ➔ `gemini-2.0-flash`) combined with exponential retries (`2s`, `4s`, `8s`) for rate limits (`429`) and serverbusy errors (`503`).
+*   **Multi-Model Resiliency**: Automated fallback routing (Groq `llama-3.3-70b-versatile` as primary LLM ➔ Gemini Flash as fallback LLM) to guarantee high availability and error recovery.
 *   **Memory-Preserving Conversations**: Conversation history tracking via Firestore with pagination-aware smooth scroll layouts.
 
 ---
@@ -42,7 +42,7 @@ graph TD
 *   **Backend**: Python, FastAPI, Uvicorn.
 *   **Database / Storage**: MongoDB Atlas (GridFS), Google Cloud Firestore.
 *   **Vector Search**: ChromaDB, Gemini Embeddings API (`models/gemini-embedding-2`).
-*   **AI Services**: Google Gemini (via `google-genai` SDK).
+*   **AI Services**: Groq (Primary LLM via `llama-3.3-70b-versatile`) and Google Gemini (Fallback LLM & Embeddings API).
 *   **Security**: Firebase Auth JWT verification middleware.
 
 ---
