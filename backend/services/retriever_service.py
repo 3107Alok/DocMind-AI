@@ -1,14 +1,21 @@
+import os
 from typing import List, Dict, Any, Optional
-from services.embedding_service import model
+from google import genai
 from services.vector_db_service import collection
+
+# Reuse API key from environment
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise ValueError("Startup Error: GEMINI_API_KEY environment variable is missing.")
+
+client = genai.Client(api_key=api_key)
 
 class RetrieverService:
     @staticmethod
     def retrieve_chunks(document_id: str, user_question: str) -> List[Dict[str, Any]]:
         """
-        Embeds the user question and queries ChromaDB for relevant chunks.
-        Dynamically adjusts the number of retrieved chunks based on whether the
-        user is asking a document-level broad question or a specific fact query.
+        Embeds the user question using Gemini's text-embedding-004 model and
+        queries ChromaDB for relevant chunks.
         """
         # Determine query type based on key phrases
         broad_keywords = [
@@ -27,7 +34,12 @@ class RetrieverService:
         # Higher top_k (12) for broad queries, lower top_k (5) for specific queries
         n_results = 12 if is_broad else 5
         
-        query_vector = model.encode(user_question).tolist()
+        # Generate query embedding vector using Gemini
+        response = client.models.embed_content(
+            model="text-embedding-004",
+            contents=user_question
+        )
+        query_vector = response.embeddings[0].values
         
         results = collection.query(
             query_embeddings=[query_vector],

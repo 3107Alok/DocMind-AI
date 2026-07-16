@@ -129,16 +129,15 @@ except Exception as e:
     startup_failed = True
     fail_reason = f"ChromaDB initialization failed: {e}"
 
-# Check Embedding Model
+# Check Embedding Model (Gemini Embeddings)
 embedding_loaded = False
 try:
-    from sentence_transformers import SentenceTransformer
-    # Import shared model singleton
-    from services.embedding_service import model
+    from google import genai
+    test_client = genai.Client(api_key=gemini_api_key)
     embedding_loaded = True
 except Exception as e:
     startup_failed = True
-    fail_reason = f"SentenceTransformer loading failed: {e}"
+    fail_reason = f"Gemini Embedding configuration failed: {e}"
 
 # Check Gemini Config
 gemini_ready = False

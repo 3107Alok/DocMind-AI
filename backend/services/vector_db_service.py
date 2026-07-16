@@ -14,6 +14,7 @@ db_path.mkdir(parents=True, exist_ok=True)
 client = chromadb.PersistentClient(path=str(db_path))
 collection = client.get_or_create_collection(name="documents")
 
+# Updated for Gemini text-embedding-004 compatibility
 class VectorDBService:
     @staticmethod
     def index_document(document_id: str, user_id: str, file_name: str) -> Dict[str, Any]:
