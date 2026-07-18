@@ -1,4 +1,4 @@
-# DocMind AI 🧠📄
+# DocMind AI 📄
 
 DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Augmented Generation) web application that enables users to upload PDF documents, parse and index them locally, and engage in context-aware conversations. Built with a robust modern stack combining **Next.js (App Router)**, **FastAPI**, **MongoDB GridFS**, **ChromaDB**, **Firestore**, and the new official **Google GenAI SDK**.
 
