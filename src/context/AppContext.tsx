@@ -7,7 +7,8 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  sendEmailVerification
+  sendEmailVerification,
+  signInWithPopup
 } from "firebase/auth";
 import { 
   collection, 
@@ -19,7 +20,7 @@ import {
   setDoc,
   serverTimestamp
 } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { auth, db, googleProvider } from "@/lib/firebase";
 
 export interface DocumentMeta {
   id: string;
@@ -431,7 +432,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Auth Methods
-  const loginWithGoogle = async () => {};
+  const loginWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = result.user;
+      // Save/update user record in Firestore
+      if (firebaseUser) {
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        await setDoc(userDocRef, {
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          lastLogin: serverTimestamp()
+        }, { merge: true });
+      }
+    } catch (error: any) {
+      // User closed the popup — silent ignore
+      if (error?.code === "auth/popup-closed-by-user") return;
+      triggerAuthErrorDialog(error);
+      throw error;
+    }
+  };
 
   const loginWithEmail = async (email: string, pass: string) => {
     try {
