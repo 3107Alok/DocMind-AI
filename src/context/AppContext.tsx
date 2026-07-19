@@ -65,7 +65,11 @@ interface UploadErrorState {
 }
 
 interface AppContextType {
-  user: { email: string } | null;
+  user: { 
+    email: string;
+    displayName?: string;
+    photoURL?: string;
+  } | null;
   loadingAuth: boolean;
   documents: DocumentMeta[];
   currentDoc: DocumentMeta | null;
@@ -106,7 +110,11 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<{ email: string } | null>(null);
+  const [user, setUser] = useState<{ 
+    email: string;
+    displayName?: string;
+    photoURL?: string;
+  } | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [documents, setDocuments] = useState<DocumentMeta[]>([]);
   const [currentDoc, setCurrentDoc] = useState<DocumentMeta | null>(null);
@@ -201,7 +209,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setLoadingAuth(true);
       if (firebaseUser) {
         if (firebaseUser.emailVerified) {
-          setUser({ email: firebaseUser.email || "" });
+          setUser({ 
+            email: firebaseUser.email || "",
+            displayName: firebaseUser.displayName || undefined,
+            photoURL: firebaseUser.photoURL || undefined
+          });
           
           try {
             const userDocRef = doc(db, "users", firebaseUser.uid);

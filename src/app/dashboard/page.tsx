@@ -37,6 +37,7 @@ export default function Dashboard() {
 
   const getDisplayName = () => {
     if (!user) return "";
+    if (user.displayName) return user.displayName;
     const prefix = user.email.split("@")[0] || "User";
     return prefix
       .split(/[\._\-+]/)
@@ -92,8 +93,17 @@ export default function Dashboard() {
                 onClick={() => setShowProfileMenu(!showProfileMenu)}
                 className="flex items-center space-x-2 focus:outline-none"
               >
-                <div className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 shadow-sm flex items-center justify-center text-slate-650 text-xs font-bold hover:bg-slate-200 transition duration-150">
-                  {getDisplayName().charAt(0)}
+                <div className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 shadow-sm flex items-center justify-center text-slate-650 text-xs font-bold hover:bg-slate-200 transition duration-150 overflow-hidden">
+                  {user.photoURL ? (
+                    <img 
+                      src={user.photoURL} 
+                      alt="Profile" 
+                      className="h-full w-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    getDisplayName().charAt(0)
+                  )}
                 </div>
               </button>
 
