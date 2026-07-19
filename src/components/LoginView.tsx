@@ -66,11 +66,9 @@ export const LoginView: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Decorative gradient backgrounds */}
       <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-200/20 rounded-full blur-3xl" />
       <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-purple-200/20 rounded-full blur-3xl" />
 
-      {/* Main glassmorphism card */}
       <div className="w-full max-w-md bg-white/70 backdrop-blur-md border border-slate-100/50 rounded-3xl p-8 shadow-2xl relative z-10 text-center flex flex-col justify-between">
 
         {/* Header */}
@@ -156,7 +154,7 @@ export const LoginView: React.FC = () => {
               </span>
               <input
                 type="password"
-                placeholder="••••••••"
+                placeholder="********"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -174,7 +172,7 @@ export const LoginView: React.FC = () => {
                 </span>
                 <input
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -206,7 +204,7 @@ export const LoginView: React.FC = () => {
               setError("");
               setSuccessMessage("");
             }}
-            className="text-xs font-bold text-blue-600 hover:text-blue-750 hover:underline transition"
+            className="text-xs font-bold text-blue-600 hover:underline transition"
           >
             {isSignUp
               ? "Already have an account? Sign In"
@@ -214,7 +212,7 @@ export const LoginView: React.FC = () => {
           </button>
         </div>
 
-        {/* Footer info banner */}
+        {/* Footer */}
         <div className="mt-6 flex items-center justify-center space-x-1.5 text-[10px] text-slate-400 font-medium">
           <ShieldCheck className="h-3.5 w-3.5 text-slate-400" />
           <span>Firebase Authentication Provider</span>
