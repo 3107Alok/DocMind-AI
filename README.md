@@ -1,6 +1,6 @@
 # DocMind AI 📄
 
-DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Augmented Generation) web application that enables users to upload PDF documents, parse and index them locally, and engage in context-aware conversations. Built with a robust modern stack combining **Next.js (App Router)**, **FastAPI**, **MongoDB GridFS**, **ChromaDB**, **Firestore**, and the new official **Google GenAI SDK**.
+DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Augmented Generation) web application that enables users to upload document files, parse and index them locally, and engage in context-aware conversations. Built with a robust modern stack combining **Next.js (App Router)**, **FastAPI**, **MongoDB GridFS**, **ChromaDB**, **Firestore**, and the new official **Google GenAI SDK**.
 
 ---
 
@@ -8,6 +8,8 @@ DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Au
 
 *   **Secure Authentication**: Integrated Firebase Authentication to protect user sessions.
 *   **GridFS Storage**: Complete removal of Firebase Storage in favor of local MongoDB GridFS storage using chunked binary uploads.
+*   **Multi-Format Document Support**: Dynamic text extraction and indexing support for **PDF (.pdf)**, **Microsoft Word (.docx)**, **Microsoft Excel (.xlsx)**, and **Microsoft PowerPoint (.pptx)** documents.
+*   **Real-time Upload Progress**: Premium UI progress indicator tracking upload percentage, with pulsing loading feedback during vector indexing.
 *   **Semantic Chunking Pipeline**: Monotonic sliding index chunking (500–700 words, 100-word overlap) with overlap guards.
 *   **Local Vector Database**: Semantic similarity index searches using **ChromaDB** with embeddings generated via the Gemini `models/gemini-embedding-2` API.
 *   **Multi-Model Resiliency**: Automated fallback routing (Groq `llama-3.3-70b-versatile` as primary LLM ➔ Gemini Flash as fallback LLM) to guarantee high availability and error recovery.
@@ -19,10 +21,10 @@ DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Au
 
 ```mermaid
 graph TD
-    User([User Client]) -->|1. Upload PDF| API[FastAPI Backend]
+    User([User Client]) -->|1. Upload File| API[FastAPI Backend]
     API -->|2. Store Binary| MongoDB[(MongoDB GridFS)]
-    API -->|3. Extract Text| PyMuPDF[PyMuPDF parser]
-    PyMuPDF -->|4. Chunking| ChunkService[Semantic Chunking]
+    API -->|3. Extract Text| DocumentService[Document Service]
+    DocumentService -->|4. Chunking| ChunkService[Semantic Chunking]
     ChunkService -->|5. Vectorize| GeminiEmbeddings[Gemini Embeddings API]
     GeminiEmbeddings -->|6. Index Vectors| ChromaDB[(ChromaDB Vector Store)]
     API -->|7. Save Metadata| Firestore[(Firestore DB)]
@@ -39,7 +41,7 @@ graph TD
 ## 🛠️ Tech Stack
 
 *   **Frontend**: React, Next.js (App Router, Tailwind CSS), Axios.
-*   **Backend**: Python, FastAPI, Uvicorn.
+*   **Backend**: Python, FastAPI, Uvicorn, PyMuPDF, python-docx, openpyxl, python-pptx.
 *   **Database / Storage**: MongoDB Atlas (GridFS), Google Cloud Firestore.
 *   **Vector Search**: ChromaDB, Gemini Embeddings API (`models/gemini-embedding-2`).
 *   **AI Services**: Groq (Primary LLM via `llama-3.3-70b-versatile`) and Google Gemini (Fallback LLM & Embeddings API).
@@ -59,7 +61,7 @@ DocMind AI/
 │   │   ├── chunk_service.py     # semantic overlap chunker
 │   │   ├── embedding_service.py # local vector generator
 │   │   ├── gemini_service.py    # fallback LLM service
-│   │   ├── pdf_service.py       # text extractor
+│   │   ├── document_service.py  # generic text extractor (PDF, DOCX, XLSX, PPTX)
 │   │   ├── retriever_service.py # similarity searcher
 │   │   └── vector_db_service.py # vector controller
 │   ├── uploads/                 # Local processing cache (ignored)
@@ -156,7 +158,7 @@ npm run dev
 | Method | Endpoint | Auth | Description |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/health` | No | Health check validating MongoDB, Firestore, ChromaDB, and Gemini connection statuses. |
-| `POST` | `/upload` | Yes | Upload PDF files using multipart/form-data directly to MongoDB GridFS. |
+| `POST` | `/upload` | Yes | Upload PDF, DOCX, XLSX, or PPTX documents using multipart/form-data directly to MongoDB GridFS. |
 | `GET` | `/documents` | Yes | List all uploaded document metadata for the logged-in user. |
 | `POST` | `/chat` | Yes | Conversational generation utilizing vector searches and history memory. |
 | `DELETE`| `/documents/{id}` | Yes | Complete document deletion (GridFS binary, Chroma vectors, chat thread history, and local JSONs). |
