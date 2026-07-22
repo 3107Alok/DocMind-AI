@@ -229,7 +229,7 @@ def get_current_user(authorization: HTTPAuthorizationCredentials = Depends(secur
             detail="Invalid or expired authentication credentials",
         )
 
-from services.pdf_service import PDFService
+from services.document_service import DocumentService
 from services.chunk_service import ChunkService
 from services.embedding_service import EmbeddingService
 from services.vector_db_service import VectorDBService
@@ -275,11 +275,12 @@ async def upload_document(
             content={"success": False, "message": "Unauthorized user session."}
         )
 
-    is_pdf = file.content_type == "application/pdf" or file.filename.lower().endswith(".pdf")
-    if not is_pdf:
+    allowed_extensions = {".pdf", ".docx", ".xlsx", ".pptx"}
+    file_ext = Path(file.filename).suffix.lower()
+    if file_ext not in allowed_extensions:
         return JSONResponse(
             status_code=400,
-            content={"success": False, "message": "Only PDF documents are supported at the moment."}
+            content={"success": False, "message": "Supported formats are: PDF, DOCX, XLSX, PPTX."}
         )
 
     logger.info("Upload started")
@@ -291,22 +292,34 @@ async def upload_document(
             content={"success": False, "message": "Maximum allowed file size is 20 MB."}
         )
 
-    pages_data = PDFService.extract_text_from_pdf_bytes(content)
+    pages_data = DocumentService.extract_text_from_bytes(content, file.filename)
     if pages_data is None:
         return JSONResponse(
             status_code=400,
             content={
                 "success": False,
-                "message": "This PDF appears to be scanned or contains no selectable text."
+                "message": "Unable to extract text. This file may be scanned, empty, or protected."
             }
         )
-    logger.info("PDF parsed")
+    logger.info("Document text parsed")
 
     try:
         document_id = f"doc-{int(uuid.uuid4().time_low)}"
 
-        # Store PDF in MongoDB GridFS
-        file_id = fs.put(content, filename=file.filename, content_type="application/pdf")
+        # Determine dynamic content type
+        content_type = file.content_type
+        if not content_type:
+            if file_ext == ".pdf":
+                content_type = "application/pdf"
+            elif file_ext == ".docx":
+                content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            elif file_ext == ".xlsx":
+                content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            elif file_ext == ".pptx":
+                content_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+        # Store file in MongoDB GridFS
+        file_id = fs.put(content, filename=file.filename, content_type=content_type)
         grid_fs_id = str(file_id)
         
         # Download URL pointing to the local serving endpoint
@@ -314,7 +327,7 @@ async def upload_document(
         download_url = f"{backend_url}/documents/{document_id}/file"
 
         # Save extracted text JSON locally
-        PDFService.save_extracted_text(document_id, pages_data)
+        DocumentService.save_extracted_text(document_id, pages_data)
 
         # Chunk the extracted text
         chunk_meta = ChunkService.chunk_document(document_id)

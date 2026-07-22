@@ -542,12 +542,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    const isPDF = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-    if (!isPDF) {
+    const allowedExtensions = [".pdf", ".docx", ".xlsx", ".pptx"];
+    const fileExtension = file.name.substring(file.name.lastIndexOf(".")).toLowerCase();
+    const isSupported = allowedExtensions.includes(fileExtension);
+    
+    if (!isSupported) {
       setUploadError({
         isOpen: true,
         title: "Unsupported File",
-        message: "Only PDF documents are supported at the moment."
+        message: "Supported formats are: PDF, DOCX, XLSX, PPTX."
       });
       return;
     }

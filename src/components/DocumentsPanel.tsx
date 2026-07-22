@@ -75,13 +75,13 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({ onToggleCollapse
           </span>
         </div>
 
-        {/* Upload Button */}
-        <div className="shrink-0">
+        {/* Upload Button & Size Label */}
+        <div className="shrink-0 space-y-2">
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleFileChange}
-            accept=".pdf"
+            accept=".pdf,.docx,.xlsx,.pptx"
             className="hidden"
           />
           <button
@@ -97,7 +97,7 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({ onToggleCollapse
             ) : isAnalyzing ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
-                <span>Analyzing document...</span>
+                <span>Analyzing & indexing...</span>
               </>
             ) : (
               <>
@@ -106,6 +106,32 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({ onToggleCollapse
               </>
             )}
           </button>
+
+          {/* Real-time Progress Bar */}
+          {(isUploading || isAnalyzing) && (
+            <div className="w-full space-y-1.5 animate-in fade-in duration-200">
+              <div className="flex justify-between items-center text-[10px] font-bold text-slate-500">
+                <span>{isUploading ? "Uploading file" : "Extracting text & indexing"}</span>
+                <span>{isUploading && uploadProgress !== null ? `${uploadProgress}%` : "In Progress"}</span>
+              </div>
+              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${
+                    isAnalyzing
+                      ? "w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse bg-[length:200%_auto]"
+                      : "bg-slate-900"
+                  }`}
+                  style={{ width: isUploading && uploadProgress !== null ? `${uploadProgress}%` : "100%" }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Size Limit and File Format Helper Text */}
+          <div className="flex justify-between items-center text-[9px] text-slate-400 font-medium px-1 pt-0.5">
+            <span>Supports: PDF, DOCX, XLSX, PPTX</span>
+            <span className="font-semibold text-slate-500">Max size: 20MB</span>
+          </div>
         </div>
 
         {/* Document List */}
