@@ -805,50 +805,99 @@ async def chat_with_document(
             
         history_str = "\n".join(history_lines)
 
-        # 3. Retrieve chunks
-        chunks = RetrieverService.retrieve_chunks(request.documentId, request.question)
+        # 3. Check for simple conversational greetings
+        common_greetings = ["hi", "hello", "hey", "how are you", "what's up", "good morning", "good evening", "hi there", "hello there", "sup", "hey docmind"]
+        clean_q = request.question.strip().lower()
         
-        # 4. Build prompt
-        prompt = PromptBuilder.build_prompt(request.question, chunks, history_str)
-
-        # 5. Call LLM Router
-        logger.info("LLM request started")
-        llm_result = LLMRouter.generate_response(prompt)
+        is_greeting = clean_q in common_greetings
         
-        answer = "Unable to generate response. Please try again."
-        if llm_result.get("success"):
-            logger.info("LLM response received")
-            answer = llm_result.get("answer", "")
+        if is_greeting:
+            chunks = []
+            prompt = PromptBuilder.build_greeting_prompt(request.question, history_str)
         else:
-            answer = f"Error generating response: {llm_result.get('message')}"
+            # Verify ChromaDB state for this document
+            status = VectorDBService.get_indexing_status(request.documentId)
+            indexed_count = status.get('indexedChunks', 0)
+            
+            logger.info(f"Chat request for documentId: {request.documentId}")
+            logger.info(f"Indexed chunks in ChromaDB for this document: {indexed_count}")
+            
+            # If the vector database was wiped (e.g., Render ephemeral storage), restore it!
+            if indexed_count == 0:
+                logger.info(f"Triggering automatic restoration for document {request.documentId}...")
+                try:
+                    grid_fs_id = doc_data.get("gridFsId")
+                    if not grid_fs_id:
+                        raise ValueError("Missing gridFsId in Firestore metadata")
+                        
+                    from bson import ObjectId
+                    
+                    grid_out = fs.get(ObjectId(grid_fs_id))
+                    content = grid_out.read()
+                    file_name = doc_data.get("fileName", "document.pdf")
+                    
+                    # Run the extraction & embedding pipeline
+                    pages_data = DocumentService.extract_text_from_bytes(content, file_name)
+                    DocumentService.save_extracted_text(request.documentId, pages_data)
+                    ChunkService.chunk_document(request.documentId)
+                    EmbeddingService.generate_embeddings(request.documentId)
+                    VectorDBService.index_document(request.documentId, uid, file_name)
+                    
+                    logger.info("Automatic restoration complete.")
+                except Exception as e:
+                    logger.error(f"Failed to restore document vectors: {e}", exc_info=True)
+            
+            chunks = RetrieverService.retrieve_chunks(request.documentId, request.question)
+            logger.info(f"RetrieverService returned {len(chunks)} chunks.")
+            prompt = PromptBuilder.build_prompt(request.question, chunks, history_str)
 
-        # 6. Extract source pages
-        source_pages = list(set([c.get("pageStart") for c in chunks if c.get("pageStart") is not None]))
-        source_pages.sort()
-
-        # 7. Save AI message to Firestore
-        ai_msg_id = f"msg-ai-{int(datetime.datetime.now().timestamp() * 1000)}"
-        timestamp_str = datetime.datetime.now().strftime("%I:%M %p").lstrip("0")
+        # 5. Call LLM Router & Stream
+        logger.info("LLM request started")
         
-        ai_msg_data = {
-            "threadId": request.threadId,
-            "sender": "ai",
-            "text": answer,
-            "userId": uid,
-            "timestamp": timestamp_str,
-            "sourcePages": source_pages
-        }
+        # We need to save the AI message to Firestore after streaming completes.
+        # Since StreamingResponse executes the generator, we handle the Firestore save inside the generator.
         
-        db.collection("chats").document(ai_msg_id).set(ai_msg_data)
+        async def event_generator():
+            full_response = ""
+            try:
+                for chunk in LLMRouter.generate_response_stream(prompt):
+                    if chunk:
+                        full_response += chunk
+                        # Yield SSE data
+                        yield f"data: {json.dumps({'text': chunk})}\n\n"
+            except Exception as e:
+                logger.error(f"Stream generation error: {e}")
+                yield f"data: {json.dumps({'text': f' [Error: {str(e)}]', 'error': True})}\n\n"
+                
+            # Stream completed, save to Firestore
+            try:
+                # Extract source pages
+                source_pages = list(set([c.get("pageStart") for c in chunks if c.get("pageStart") is not None]))
+                source_pages.sort()
 
-        if llm_result.get("success"):
-            logger.info("Chat completed")
+                ai_msg_id = f"msg-ai-{int(datetime.datetime.now().timestamp() * 1000)}"
+                timestamp_str = datetime.datetime.now().strftime("%I:%M %p").lstrip("0")
+                
+                ai_msg_data = {
+                    "threadId": request.threadId,
+                    "sender": "ai",
+                    "text": full_response,
+                    "userId": uid,
+                    "timestamp": timestamp_str,
+                    "sourcePages": source_pages
+                }
+                
+                db.collection("chats").document(ai_msg_id).set(ai_msg_data)
+                
+                # Yield final message with source pages and done flag
+                yield f"data: {json.dumps({'done': True, 'sourcePages': source_pages})}\n\n"
+                
+            except Exception as e:
+                logger.error(f"Failed to save AI message after stream: {e}", exc_info=True)
+                yield f"data: {json.dumps({'done': True, 'sourcePages': []})}\n\n"
+                
+        return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-        return {
-            "success": True,
-            "answer": answer,
-            "sourcePages": source_pages
-        }
     except HTTPException as he:
         raise he
     except Exception as e:

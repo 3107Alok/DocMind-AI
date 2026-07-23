@@ -53,3 +53,22 @@ class PromptBuilder:
         )
         
         return prompt
+
+    @staticmethod
+    def build_greeting_prompt(question: str, history_str: str = "") -> str:
+        """
+        Builds a quick conversational prompt for simple greetings, skipping document context.
+        """
+        history_section = ""
+        if history_str:
+            history_section = f"Conversation History:\n{history_str}\n\n"
+        
+        prompt = (
+            "You are DocMind AI, a friendly and intelligent document assistant.\n\n"
+            "The user is simply greeting you. Reply naturally, briefly, and warmly.\n"
+            "Acknowledge the greeting and offer to help them analyze or query their uploaded documents.\n"
+            "Do NOT hallucinate document content.\n\n"
+            f"{history_section}"
+            f"User Message:\n\n{question}\n"
+        )
+        return prompt

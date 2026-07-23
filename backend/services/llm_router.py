@@ -72,3 +72,50 @@ class LLMRouter:
                     "success": False,
                     "message": "LLM services are currently busy. Please try again in a few moments."
                 }
+
+    @staticmethod
+    def generate_response_stream(prompt: str):
+        """
+        Routes the LLM prompt to the primary provider (defaulting to Groq),
+        and falls back to Gemini for streaming.
+        """
+        primary = os.getenv("PRIMARY_LLM", "groq").lower().strip()
+        fallback = os.getenv("FALLBACK_LLM", "gemini").lower().strip()
+
+        providers = {
+            "groq": GroqService.generate_response_stream,
+            "gemini": GeminiService.generate_response_stream
+        }
+
+        if primary not in providers:
+            primary = "groq"
+
+        primary_name = "Groq" if primary == "groq" else "Gemini"
+        fallback_name = "Gemini" if primary == "groq" else "Groq"
+
+        logger.info(f"Trying streaming with {primary_name}...")
+        
+        try:
+            # We yield from the generator
+            for chunk in providers[primary](prompt):
+                yield chunk
+        except Exception as e:
+            err_msg = str(e)
+            
+            is_config_error = False
+            if "API key" in err_msg or "unauthorized" in err_msg.lower() or "401" in err_msg or "authentication" in err_msg.lower():
+                is_config_error = True
+            
+            if is_config_error:
+                logger.error(f"{primary_name} configuration error. Error: {err_msg}")
+                yield f"[Error: {primary_name} configuration issue]"
+                return
+
+            logger.warning(f"{primary_name} streaming failed: {e}. Switching to {fallback_name}...")
+            
+            try:
+                for chunk in providers[fallback](prompt):
+                    yield chunk
+            except Exception as fallback_e:
+                logger.error(f"Fallback {fallback_name} streaming also failed: {fallback_e}", exc_info=True)
+                yield "[Error: LLM services are currently busy. Please try again later.]"

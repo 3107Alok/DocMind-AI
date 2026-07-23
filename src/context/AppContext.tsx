@@ -557,6 +557,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setIsUploading(true);
     setUploadProgress(0);
+    
+    let simulationInterval: NodeJS.Timeout | null = null;
 
     try {
       const idToken = await auth.currentUser.getIdToken();
@@ -574,10 +576,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100);
-            setUploadProgress(pct);
+            if (pct < 100) {
+              setUploadProgress(pct);
+            } else if (pct === 100 && !simulationInterval) {
+              // Network upload complete, start simulating processing time
+              setUploadProgress(90); // Jump to 90% and slowly tick up
+              simulationInterval = setInterval(() => {
+                setUploadProgress((prev) => {
+                  if (prev !== null && prev < 98) return prev + 1;
+                  return prev;
+                });
+              }, 600);
+            }
           }
         }
       });
+
+      if (simulationInterval) clearInterval(simulationInterval);
 
       const resData = response.data;
       if (resData.success && resData.document) {
@@ -606,6 +621,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         throw new Error(resData.message || "Failed to upload document");
       }
     } catch (err) {
+      if (simulationInterval) clearInterval(simulationInterval);
       console.error("Direct upload failed", err);
       setIsUploading(false);
       setUploadProgress(null);
@@ -721,25 +737,64 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         throw new Error("Backend connection error");
       }
 
-      const resData = await response.json();
+      const aiMsgId = `msg-ai-${Date.now()}`;
+      const aiMsg: ChatMessage = {
+        id: aiMsgId,
+        sender: "ai",
+        text: "",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        sourcePages: []
+      };
       
-      if (resData.success) {
-        const aiMsgId = `msg-ai-${Date.now()}`;
-        const aiMsg: ChatMessage = {
-          id: aiMsgId,
-          sender: "ai",
-          text: resData.answer,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          sourcePages: resData.sourcePages || []
-        };
-        
-        // Local state update (the backend already saved it to Firestore)
-        setChats(prev => ({
-          ...prev,
-          [activeThreadId]: [...(prev[activeThreadId] || []), aiMsg]
-        }));
-      } else {
-        throw new Error(resData.message || "Query failed");
+      // Initialize empty AI message in UI
+      setChats(prev => ({
+        ...prev,
+        [activeThreadId]: [...(prev[activeThreadId] || []), aiMsg]
+      }));
+
+      // Stream parsing logic
+      if (response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let aiText = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.replace("data: ", "").trim();
+              if (dataStr) {
+                try {
+                  const data = JSON.parse(dataStr);
+                  if (data.text) {
+                    aiText += data.text;
+                    setChats(prev => {
+                      const threadChats = prev[activeThreadId] || [];
+                      const updatedChats = threadChats.map(c => 
+                        c.id === aiMsgId ? { ...c, text: aiText } : c
+                      );
+                      return { ...prev, [activeThreadId]: updatedChats };
+                    });
+                  }
+                  if (data.done) {
+                    setChats(prev => {
+                      const threadChats = prev[activeThreadId] || [];
+                      const updatedChats = threadChats.map(c => 
+                        c.id === aiMsgId ? { ...c, sourcePages: data.sourcePages || [] } : c
+                      );
+                      return { ...prev, [activeThreadId]: updatedChats };
+                    });
+                  }
+                } catch (e) {
+                  console.error("SSE JSON parse error:", e);
+                }
+              }
+            }
+          }
+        }
       }
     } catch (err) {
       console.error("Ask question failed", err);

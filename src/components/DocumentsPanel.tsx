@@ -92,7 +92,7 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({ onToggleCollapse
             {isUploading ? (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
-                <span>Uploading... {uploadProgress !== null ? `${uploadProgress}%` : ""}</span>
+                <span>{(uploadProgress !== null && uploadProgress > 90) ? "Processing..." : "Uploading..."} {uploadProgress !== null ? `${uploadProgress}%` : ""}</span>
               </>
             ) : isAnalyzing ? (
               <>
@@ -111,7 +111,7 @@ export const DocumentsPanel: React.FC<DocumentsPanelProps> = ({ onToggleCollapse
           {(isUploading || isAnalyzing) && (
             <div className="w-full space-y-1.5 animate-in fade-in duration-200">
               <div className="flex justify-between items-center text-[10px] font-bold text-slate-500">
-                <span>{isUploading ? "Uploading file" : "Extracting text & indexing"}</span>
+                <span>{isUploading ? (uploadProgress !== null && uploadProgress > 90 ? "Processing file..." : "Uploading file") : "Extracting text & indexing"}</span>
                 <span>{isUploading && uploadProgress !== null ? `${uploadProgress}%` : "In Progress"}</span>
               </div>
               <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">

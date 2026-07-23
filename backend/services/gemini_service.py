@@ -105,3 +105,22 @@ class GeminiService:
             "success": False,
             "message": "Gemini servers are currently busy.\nPlease try again in a few moments."
         }
+
+    @staticmethod
+    def generate_response_stream(prompt: str):
+        """
+        Sends the structured prompt to the Gemini API and yields chunks as they arrive.
+        """
+        model_primary = "gemini-2.5-flash"
+        try:
+            logger.info(f"Using model {model_primary} for streaming request")
+            response = client.models.generate_content_stream(
+                model=model_primary,
+                contents=prompt
+            )
+            for chunk in response:
+                if chunk.text:
+                    yield chunk.text
+        except Exception as e:
+            logger.error(f"Gemini streaming call failed: {e}", exc_info=True)
+            raise e

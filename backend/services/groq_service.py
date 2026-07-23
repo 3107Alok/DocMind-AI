@@ -40,3 +40,34 @@ class GroqService:
         except Exception as e:
             logger.error(f"Groq generation call failed: {e}")
             raise e
+
+    @staticmethod
+    def generate_response_stream(prompt: str):
+        """
+        Sends the structured prompt to the Groq API and yields chunks as they arrive.
+        """
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError("Groq API configuration error: GROQ_API_KEY is missing.")
+            
+        model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+        
+        try:
+            logger.info(f"Using model {model_name} on Groq for streaming request")
+            client = Groq(api_key=api_key)
+            stream = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.2,
+                stream=True
+            )
+            
+            for chunk in stream:
+                if chunk.choices[0].delta.content is not None:
+                    yield chunk.choices[0].delta.content
+                    
+        except Exception as e:
+            logger.error(f"Groq streaming call failed: {e}")
+            raise e
