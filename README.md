@@ -12,6 +12,9 @@ DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Au
 *   **Real-time Upload Progress**: Premium UI progress indicator tracking upload percentage, with pulsing loading feedback during vector indexing.
 *   **Semantic Chunking Pipeline**: Monotonic sliding index chunking (500–700 words, 100-word overlap) with overlap guards.
 *   **Local Vector Database**: Semantic similarity index searches using **ChromaDB** with embeddings generated via the Gemini `models/gemini-embedding-2` API.
+*   **Cloud-Resilient Vector Restoration**: Automatically regenerates in-memory and local vector data on the fly from MongoDB GridFS when deployed in ephemeral cloud environments (like Render).
+*   **Real-time Streaming Responses**: Provides dynamic, token-by-token text generation for LLM responses using Server-Sent Events (SSE).
+*   **Fast Intent-Based Responses**: Instantly bypasses the Vector DB for casual conversational greetings to deliver near-zero latency replies.
 *   **Multi-Model Resiliency**: Automated fallback routing (Groq `llama-3.3-70b-versatile` as primary LLM ➔ Gemini Flash as fallback LLM) to guarantee high availability and error recovery.
 *   **Memory-Preserving Conversations**: Conversation history tracking via Firestore with pagination-aware smooth scroll layouts.
 
