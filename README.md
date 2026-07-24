@@ -4,7 +4,7 @@ DocMind AI is a state-of-the-art, secure, and production-ready RAG (Retrieval-Au
 
 ---
 
-## 🚀 Key Features
+##  Key Features
 
 *   **Secure Authentication**: Integrated Firebase Authentication to protect user sessions.
 *   **GridFS Storage**: Complete removal of Firebase Storage in favor of local MongoDB GridFS storage using chunked binary uploads.
